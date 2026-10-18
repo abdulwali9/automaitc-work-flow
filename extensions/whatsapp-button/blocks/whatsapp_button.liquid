@@ -1,0 +1,86 @@
+{% assign phone = block.settings.phone_number | default: section.settings.phone_number %}
+{% if phone == blank %}
+  {% assign phone = app.metafields.whatsapp_settings.config.value.phone %}
+{% endif %}
+
+{% assign btn_text = block.settings.button_text | default: "Order via WhatsApp" %}
+
+<div class="whatsapp-btn-wrapper" style="margin: 15px 0;">
+  <button id="ca-whatsapp-order-btn" style="
+    background-color: #25D366;
+    color: #fff;
+    border: none;
+    padding: 12px 20px;
+    font-size: 16px;
+    font-weight: 600;
+    border-radius: 6px;
+    cursor: pointer;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  ">
+    <span>{{ btn_text }}</span>
+  </button>
+</div>
+
+<script>
+  (function() {
+    const btn = document.getElementById("ca-whatsapp-order-btn");
+    if (!btn) return;
+
+    btn.addEventListener("click", function(e) {
+      e.preventDefault();
+
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      const device = isMobile ? "mobile" : "desktop";
+      const shopDomain = "{{ shop.permanent_domain }}";
+
+      // 1. Send tracking ping
+      fetch("/apps/track-click", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ shop: shopDomain, device: device }),
+        keepalive: true
+      }).catch(function(err) {
+        console.log("Tracking error:", err);
+      });
+
+      // 2. WhatsApp Number from Theme Settings
+      const phoneNum = "{{ phone }}";
+
+      if (!phoneNum) {
+        alert("Pehle Theme Customize mein ja kar WhatsApp number enter karein!");
+        return;
+      }
+
+      const msg = encodeURIComponent("Hi, I want to order: {{ product.title }} - {{ shop.url }}{{ product.url }}");
+      const waUrl = "https://wa.me/" + phoneNum.trim() + "?text=" + msg;
+
+      window.open(waUrl, "_blank");
+    });
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "WhatsApp Button",
+  "target": "section",
+  "settings": [
+    {
+      "type": "text",
+      "id": "phone_number",
+      "label": "WhatsApp Business Number",
+      "default": "923001234567",
+      "info": "Country code ke sath likhein bina + ke (e.g. 923001234567)"
+    },
+    {
+      "type": "text",
+      "id": "button_text",
+      "label": "Button Label",
+      "default": "Order via WhatsApp"
+    }
+  ]
+}
+{% endschema %}
